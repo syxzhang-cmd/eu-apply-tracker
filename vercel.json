@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/refresh-sources.js": {
+      "maxDuration": 60
+    }
+  }
+}

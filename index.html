@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>欧洲社科申请雷达</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top-shell">
+      <nav class="nav-bar" aria-label="主导航">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">EU</span>
+          <span>社科申请雷达</span>
+        </div>
+        <div class="nav-actions">
+          <button class="icon-button" id="refreshButton" type="button" title="刷新状态" aria-label="刷新状态">↻</button>
+          <button class="text-button" id="exportButton" type="button">导出</button>
+          <label class="text-button file-button" for="importFile">导入</label>
+          <input id="importFile" type="file" accept="application/json" hidden />
+        </div>
+      </nav>
+
+      <section class="hero-board" aria-labelledby="pageTitle">
+        <div class="hero-copy">
+          <p class="eyebrow" id="todayLabel">今日申请状态</p>
+          <h1 id="pageTitle">现在还能投什么，一眼看清。</h1>
+          <p class="hero-note">按开放窗口、截止日期、个人匹配度和材料缺口自动排序；官网链接和核验日期保留在每条项目卡里。</p>
+        </div>
+        <div class="hero-stats" aria-label="今日概览">
+          <div>
+            <span id="metricOpen">0</span>
+            <small>可投递</small>
+          </div>
+          <div>
+            <span id="metricUrgent">0</span>
+            <small>21天内截止</small>
+          </div>
+          <div>
+            <span id="metricFit">0</span>
+            <small>高匹配</small>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section class="control-band" aria-label="筛选和个人画像">
+        <form class="profile-panel" id="profileForm">
+          <div class="section-heading">
+            <h2>个人画像</h2>
+            <button class="icon-button" type="submit" title="保存画像" aria-label="保存画像">✓</button>
+          </div>
+          <div class="profile-grid">
+            <label>
+              GPA / 均分
+              <input name="gpa" type="number" min="0" max="100" step="0.1" />
+            </label>
+            <label>
+              IELTS
+              <input name="ielts" type="number" min="0" max="9" step="0.5" />
+            </label>
+            <label>
+              年预算上限
+              <input name="budget" type="number" min="0" step="1000" />
+            </label>
+            <label>
+              目标入学季
+              <select name="intake">
+                <option value="2027 Fall">2027 Fall</option>
+                <option value="2027 Spring">2027 Spring</option>
+                <option value="2028 Fall">2028 Fall</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            方向关键词
+            <input name="interests" type="text" placeholder="公共政策, 国际关系, 社会学" />
+          </label>
+          <label>
+            优先国家/地区
+            <input name="countries" type="text" placeholder="United Kingdom, Netherlands, Germany" />
+          </label>
+        </form>
+
+        <div class="filter-panel">
+          <div class="section-heading">
+            <h2>项目筛选</h2>
+            <span id="resultCount">0 个项目</span>
+          </div>
+          <div class="filter-grid">
+            <label class="wide">
+              搜索
+              <input id="searchInput" type="search" placeholder="学校、项目、城市、方向" />
+            </label>
+            <label>
+              国家/地区
+              <select id="countryFilter"></select>
+            </label>
+            <label>
+              当前状态
+              <select id="statusFilter">
+                <option value="all">全部</option>
+                <option value="open">可投递</option>
+                <option value="urgent">快截止</option>
+                <option value="future">未开放</option>
+                <option value="closed">已截止</option>
+                <option value="unknown">待核验</option>
+              </select>
+            </label>
+            <label>
+              定位
+              <select id="tierFilter">
+                <option value="all">全部</option>
+                <option value="reach">冲刺</option>
+                <option value="match">匹配</option>
+                <option value="safer">保底</option>
+              </select>
+            </label>
+            <label class="switch-line">
+              <input id="possibleOnly" type="checkbox" checked />
+              只看仍可能投递
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="work-band" aria-label="今日行动">
+        <div class="task-strip">
+          <div class="section-heading">
+            <h2>今日队列</h2>
+            <span id="taskHint">按紧急度排序</span>
+          </div>
+          <div id="taskList" class="task-list"></div>
+        </div>
+        <div class="timeline-strip">
+          <div class="section-heading">
+            <h2>截止时间线</h2>
+            <span>未来 120 天</span>
+          </div>
+          <div id="timelineList" class="timeline-list"></div>
+        </div>
+      </section>
+
+      <section class="planner-band" aria-label="申请规划">
+        <div class="calendar-panel">
+          <div class="section-heading">
+            <h2>申请日历</h2>
+            <span id="calendarSummary">按月份整理</span>
+          </div>
+          <div id="calendarList" class="calendar-list"></div>
+        </div>
+        <div class="materials-panel">
+          <div class="section-heading">
+            <h2>材料清单</h2>
+            <span id="materialSummary">按优先级生成</span>
+          </div>
+          <div id="materialList" class="material-list"></div>
+        </div>
+      </section>
+
+      <section class="update-band" aria-label="实时更新">
+        <div class="update-panel">
+          <div class="section-heading">
+            <h2>官网核验监控</h2>
+            <span id="sourceCheckedLabel">尚未运行更新脚本</span>
+          </div>
+          <div class="update-grid">
+            <div class="update-copy">
+              <p id="refreshModeNote">本地服务打开后，可以直接按按钮巡检官网链接；页面会显示哪些官网页变动、失联或需要人工复核。</p>
+              <div class="command-line">
+                <code id="refreshCommand">py -3 scripts\local_server.py</code>
+                <button class="text-button dark" id="copyRefreshCommand" type="button">复制</button>
+                <button class="primary-button" id="runSourceRefresh" type="button">运行巡检</button>
+              </div>
+              <p class="refresh-log" id="refreshLog" aria-live="polite"></p>
+            </div>
+            <div class="source-summary" id="sourceSummary"></div>
+          </div>
+          <div id="sourceList" class="source-list"></div>
+        </div>
+      </section>
+
+      <section class="program-band" aria-label="项目列表">
+        <div id="programGrid" class="program-grid" aria-live="polite"></div>
+      </section>
+
+      <section class="add-band" aria-label="添加项目">
+        <details class="add-panel">
+          <summary>添加一个新项目</summary>
+          <form id="addProgramForm" class="add-form">
+            <label>
+              学校
+              <input name="school" required />
+            </label>
+            <label>
+              项目
+              <input name="program" required />
+            </label>
+            <label>
+              国家/地区
+              <input name="country" required />
+            </label>
+            <label>
+              城市
+              <input name="city" />
+            </label>
+            <label>
+              定位
+              <select name="tier">
+                <option value="match">匹配</option>
+                <option value="reach">冲刺</option>
+                <option value="safer">保底</option>
+              </select>
+            </label>
+            <label>
+              开放日期
+              <input name="opens" type="date" />
+            </label>
+            <label>
+              截止日期
+              <input name="deadline" type="date" />
+            </label>
+            <label>
+              官网链接
+              <input name="source" type="url" />
+            </label>
+            <label class="wide">
+              方向标签
+              <input name="tags" placeholder="公共政策, 国际关系, 定量方法" />
+            </label>
+            <label class="wide">
+              备注
+              <textarea name="notes" rows="3"></textarea>
+            </label>
+            <button class="primary-button" type="submit">保存项目</button>
+          </form>
+        </details>
+      </section>
+    </main>
+
+    <template id="programTemplate">
+      <article class="program-card">
+        <div class="card-head">
+          <div>
+            <p class="school"></p>
+            <h3></h3>
+          </div>
+          <span class="status-pill"></span>
+        </div>
+        <div class="meta-row"></div>
+        <div class="date-row"></div>
+        <div class="score-row">
+          <span class="fit-score"></span>
+          <span class="tier-pill"></span>
+          <span class="verify-pill"></span>
+        </div>
+        <div class="tag-row"></div>
+        <p class="notes"></p>
+        <div class="requirement-row"></div>
+        <details class="detail-block">
+          <summary>申请细节</summary>
+          <div class="detail-content"></div>
+        </details>
+        <label class="card-note">
+          我的备注
+          <textarea rows="2"></textarea>
+        </label>
+        <div class="card-actions">
+          <select class="stage-select" aria-label="申请阶段">
+            <option value="watching">观察</option>
+            <option value="preparing">准备材料</option>
+            <option value="submitted">已递交</option>
+            <option value="decision">等结果</option>
+            <option value="discarded">放弃</option>
+          </select>
+          <button class="pin-button" type="button" title="加入重点" aria-label="加入重点">☆</button>
+          <a class="source-link" target="_blank" rel="noreferrer">官网</a>
+        </div>
+      </article>
+    </template>
+
+    <script src="data.js"></script>
+    <script src="sources-status.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
